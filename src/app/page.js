@@ -110,17 +110,17 @@ export default function Home() {
                 </div>
               )}
               {msg.role === "bot" && i !== 0 && !feedbackGiven[i] && (
-                <div className="mt-2 flex gap-2 text-sm text-white">
+                <div className="mt-2 flex gap-2 text-sm text-black">
                   Was this helpful?
                   <button
                     onClick={() => sendFeedback(i, "thumbs_up")}
-                    className="hover:text-green-400"
+                    className="hover:text-green-600"
                   >
                     👍
                   </button>
                   <button
                     onClick={() => sendFeedback(i, "thumbs_down")}
-                    className="hover:text-red-400"
+                    className="hover:text-red-600"
                   >
                     👎
                   </button>
@@ -170,3 +170,4 @@ export default function Home() {
     </div>
   );
 }
+
