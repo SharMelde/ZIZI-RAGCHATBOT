@@ -13,6 +13,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState({});
+  const [regeneratingIndex, setRegeneratingIndex] = useState(null);
   const messagesEndRef = useRef(null);
 
   const submit = async (e) => {
@@ -54,6 +55,44 @@ export default function Home() {
     }
   };
 
+  const regenerateAnswer = async (index) => {
+    const msg = messages[index];
+    if (!msg || msg.role !== "bot" || !msg.query) return;
+
+    setRegeneratingIndex(index);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: msg.query }),
+      });
+
+      const data = await res.json();
+
+      const updated = {
+        ...msg,
+        content: data.response.answer || "❗ No useful sentences found.",
+        source: data.response.source || "Unknown source",
+      };
+
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[index] = updated;
+        return copy;
+      });
+      setFeedbackGiven((prev) => {
+        const copy = { ...prev };
+        delete copy[index];
+        return copy;
+      });
+    } catch (err) {
+      console.error("Error during regeneration:", err);
+    } finally {
+      setRegeneratingIndex(null);
+    }
+  };
+
   const sendFeedback = async (index, type) => {
     const msg = messages[index];
     if (!msg || msg.role !== "bot" || feedbackGiven[index]) return;
@@ -77,7 +116,7 @@ export default function Home() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black font-[Calibri] p-4">
@@ -97,20 +136,30 @@ export default function Home() {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`max-w-[80%] px-4 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+              className={`max-w-[80%] px-4 py-2 rounded-lg text-sm whitespace-pre-line ${
                 msg.role === "user"
                   ? "bg-[#6FAD46] text-white ml-auto text-right"
                   : "bg-[#7A2982] text-white mr-auto text-left"
               }`}
             >
-              {msg.content}
-              {msg.role === "bot" && msg.source && (
-                <div className="mt-2 text-xs italic text-gray-300">
-                  Source: {msg.source}
-                </div>
+              {regeneratingIndex === i ? (
+                <span className="italic text-sm animate-pulse">
+                  Regenerating...
+                </span>
+              ) : (
+                msg.content
               )}
+
+              {msg.role === "bot" &&
+                msg.source &&
+                !msg.source.includes("Unknown") && (
+                  <div className="mt-2 text-xs italic text-gray-300">
+                    Source: {msg.source}
+                  </div>
+                )}
+
               {msg.role === "bot" && i !== 0 && !feedbackGiven[i] && (
-                <div className="mt-2 flex gap-2 text-sm text-black">
+                <div className="mt-2 flex flex-wrap gap-3 text-sm text-black">
                   Was this helpful?
                   <button
                     onClick={() => sendFeedback(i, "thumbs_up")}
@@ -124,8 +173,15 @@ export default function Home() {
                   >
                     👎
                   </button>
+                  <button
+                    onClick={() => regenerateAnswer(i)}
+                    className="text-[#7A2982] hover:underline ml-2"
+                  >
+                    🔁 Regenerate
+                  </button>
                 </div>
               )}
+
               {msg.role === "bot" && i !== 0 && feedbackGiven[i] && (
                 <div className="mt-1 text-green-300 text-xs">
                   ✅ Feedback recorded
@@ -133,6 +189,7 @@ export default function Home() {
               )}
             </div>
           ))}
+
           {loading && (
             <div className="text-[#7A2982] text-sm italic animate-pulse">
               Zizi is typing...
@@ -170,4 +227,6 @@ export default function Home() {
     </div>
   );
 }
+
+
 
